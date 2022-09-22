@@ -1,21 +1,18 @@
-defmodule Macvendors.Macvendors do
+defmodule Macvendors.Importer do
   def load_vendors() do
-    {:ok, pid} = Macvendors.Server.start_link()
-
     [
       {"mal", "https://standards-oui.ieee.org/oui/oui.csv"},
       {"mam", "https://standards-oui.ieee.org/oui28/mam.csv"},
       {"mas", "https://standards-oui.ieee.org/oui36/oui36.csv"}
     ]
-    |> Enum.each(&load_registry(&1, pid))
-    pid
+    |> Enum.each(fn list -> spawn(Macvendors.Importer, :load_registry, [list]) end)
   end
 
-  def load_registry({registry, url}, pid) do
+  def load_registry({registry, url}) do
     url
     |> download
     |> save(registry)
-    |> load(pid)
+    |> load
   end
 
   def download(url) do
@@ -31,7 +28,7 @@ defmodule Macvendors.Macvendors do
     path
   end
 
-  def load(path, pid) do
+  def load(path) do
     IO.puts "Loading #{path}..."
 
     path
@@ -40,8 +37,7 @@ defmodule Macvendors.Macvendors do
          strip_fields: true,
          headers: true
        )
-    |> Enum.each(fn(vendor) -> Macvendors.Server.add(pid, vendor) end)
+    |> Enum.each(fn(vendor) -> Macvendors.Server.add(vendor) end)
 
-    pid
   end
 end
